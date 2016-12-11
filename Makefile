@@ -4,16 +4,19 @@ node_exporter \
 mysqld_exporter \
 blackbox_exporter
 
+SOURCE = $(shell rpmspec -P $@/$@.spec | grep Source0 | cut -f 2 -d' ')
+
 .PHONY: $(PACKAGES)
 
 all: $(PACKAGES)
 
 $(PACKAGES):
-	docker run --rm \
-		-v ${PWD}/$@:/rpmbuild/SOURCES \
-		-v ${PWD}/_dist:/rpmbuild/RPMS/x86_64 \
-		lest/centos7-rpm-builder \
-		build-spec SOURCES/$@.spec
+
+	cd $@; curl -L -O $(SOURCE)
+	rpmbuild -D '_sourcedir ${PWD}/$@' -D '_topdir ${PWD}/_dist' -ba $@/$@.spec
+
+download:
+	
 
 sign:
 	docker run --rm \
@@ -24,9 +27,6 @@ sign:
 		-v ${PWD}/.passphrase:/rpmbuild/.passphrase \
 		lest/centos7-rpm-builder \
 		bin/sign
-
-publish: sign
-	package_cloud push --skip-errors prometheus-rpm/release/el/7 _dist/*.rpm
 
 clean:
 	rm -rf _dist
