@@ -9,7 +9,7 @@ URL:     https://github.com/prometheus/node_exporter
 
 Source0: https://github.com/prometheus/node_exporter/releases/download/v%{version}/node_exporter-%{version}.linux-amd64.tar.gz
 Source1: node_exporter.service
-Source2: node_exporter.default
+Source2: node_exporter.sysconfig
 
 %{?systemd_requires}
 Requires(pre): shadow-utils
@@ -28,10 +28,10 @@ Prometheus exporter for machine metrics, written in Go with pluggable metric col
 mkdir -vp %{buildroot}/var/lib/prometheus
 mkdir -vp %{buildroot}/usr/bin
 mkdir -vp %{buildroot}/usr/lib/systemd/system
-mkdir -vp %{buildroot}/etc/default
+mkdir -vp %{buildroot}/etc/sysconfig
 install -m 755 node_exporter %{buildroot}/usr/bin/node_exporter
 install -m 644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/node_exporter.service
-install -m 644 %{SOURCE2} %{buildroot}/etc/default/node_exporter
+install -m 644 %{SOURCE2} %{buildroot}/etc/sysconfig/node_exporter
 
 %pre
 getent group prometheus >/dev/null || groupadd -r prometheus
@@ -41,17 +41,24 @@ getent passwd prometheus >/dev/null || \
 exit 0
 
 %post
-%systemd_post node_exporter.service
+if [ $1 -eq 1 ] ; then
+        # Initial installation
+        systemctl preset %{name}.service >/dev/null 2>&1 || :
+fi
 
 %preun
-%systemd_preun node_exporter.service
+if [ $1 -eq 0 ] ; then
+        # Package removal, not upgrade
+        systemctl --no-reload disable %{name}.service > /dev/null 2>&1 || :
+        systemctl stop %{name}.service > /dev/null 2>&1 || :
+fi
 
 %postun
-%systemd_postun node_exporter.service
+systemctl daemon-reload >/dev/null 2>&1 || :
 
 %files
 %defattr(-,root,root,-)
 /usr/bin/node_exporter
 /usr/lib/systemd/system/node_exporter.service
-%config(noreplace) /etc/default/node_exporter
+%config(noreplace) /etc/sysconfig/node_exporter
 %attr(755, prometheus, prometheus)/var/lib/prometheus

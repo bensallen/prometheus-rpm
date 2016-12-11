@@ -6,7 +6,7 @@ Documentation=https://github.com/prometheus/blackbox_exporter
 After=network.target
 
 [Service]
-EnvironmentFile=-/etc/default/blackbox_exporter
+EnvironmentFile=-/etc/sysconfig/blackbox_exporter
 User=prometheus
 ExecStart=/usr/bin/blackbox_exporter $BLACKBOX_EXPORTER_OPTS
 Restart=on-failure

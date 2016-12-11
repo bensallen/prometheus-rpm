@@ -9,7 +9,7 @@ URL:     https://github.com/prometheus/blackbox_exporter
 
 Source0: https://github.com/prometheus/blackbox_exporter/releases/download/v%{version}/blackbox_exporter-%{version}.linux-amd64.tar.gz
 Source1: blackbox_exporter.service
-Source2: blackbox_exporter.default
+Source2: blackbox_exporter.sysconfig
 
 %{?systemd_requires}
 Requires(pre): shadow-utils
@@ -28,10 +28,10 @@ The blackbox exporter allows blackbox probing of endpoints over HTTP, HTTPS, DNS
 mkdir -vp %{buildroot}/var/lib/prometheus
 mkdir -vp %{buildroot}/usr/bin
 mkdir -vp %{buildroot}/usr/lib/systemd/system
-mkdir -vp %{buildroot}/etc/default
+mkdir -vp %{buildroot}/etc/sysconfig
 install -m 755 blackbox_exporter %{buildroot}/usr/bin/blackbox_exporter
 install -m 644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/blackbox_exporter.service
-install -m 644 %{SOURCE2} %{buildroot}/etc/default/blackbox_exporter
+install -m 644 %{SOURCE2} %{buildroot}/etc/sysconfig/blackbox_exporter
 
 %pre
 getent group prometheus >/dev/null || groupadd -r prometheus
@@ -41,17 +41,24 @@ getent passwd prometheus >/dev/null || \
 exit 0
 
 %post
-%systemd_post blackbox_exporter.service
+if [ $1 -eq 1 ] ; then
+        # Initial installation
+        systemctl preset %{name}.service >/dev/null 2>&1 || :
+fi
 
 %preun
-%systemd_preun blackbox_exporter.service
+if [ $1 -eq 0 ] ; then
+        # Package removal, not upgrade
+        systemctl --no-reload disable %{name}.service > /dev/null 2>&1 || :
+        systemctl stop %{name}.service > /dev/null 2>&1 || :
+fi
 
 %postun
-%systemd_postun blackbox_exporter.service
+systemctl daemon-reload >/dev/null 2>&1 || :
 
 %files
 %defattr(-,root,root,-)
 /usr/bin/blackbox_exporter
 /usr/lib/systemd/system/blackbox_exporter.service
-%config(noreplace) /etc/default/blackbox_exporter
+%config(noreplace) /etc/sysconfig/blackbox_exporter
 %attr(755, prometheus, prometheus)/var/lib/prometheus

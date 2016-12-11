@@ -9,7 +9,7 @@ URL:     https://github.com/prometheus/alertmanager
 
 Source0: https://github.com/prometheus/alertmanager/releases/download/v%{version}/alertmanager-%{version}.linux-amd64.tar.gz
 Source1: alertmanager.service
-Source2: alertmanager.default
+Source2: alertmanager.sysconfig
 
 %description
 
@@ -29,11 +29,11 @@ mkdir -vp %{buildroot}/var/lib/prometheus
 mkdir -vp %{buildroot}/usr/bin
 mkdir -vp %{buildroot}/etc/prometheus
 mkdir -vp %{buildroot}/usr/lib/systemd/system
-mkdir -vp %{buildroot}/etc/default
+mkdir -vp %{buildroot}/etc/sysconfig
 install -m 755 alertmanager %{buildroot}/usr/bin/alertmanager
 install -m 644 simple.yml %{buildroot}/etc/prometheus/alertmanager.yml
 install -m 644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/alertmanager.service
-install -m 644 %{SOURCE2} %{buildroot}/etc/default/alertmanager
+install -m 644 %{SOURCE2} %{buildroot}/etc/sysconfig/alertmanager
 
 %pre
 getent group prometheus >/dev/null || groupadd -r prometheus
@@ -43,18 +43,25 @@ getent passwd prometheus >/dev/null || \
 exit 0
 
 %post
-%systemd_post alertmanager.service
+if [ $1 -eq 1 ] ; then
+        # Initial installation
+        systemctl preset %{name}.service >/dev/null 2>&1 || :
+fi
 
 %preun
-%systemd_preun alertmanager.service
+if [ $1 -eq 0 ] ; then
+        # Package removal, not upgrade
+        systemctl --no-reload disable %{name}.service > /dev/null 2>&1 || :
+        systemctl stop %{name}.service > /dev/null 2>&1 || :
+fi
 
 %postun
-%systemd_postun alertmanager.service
+systemctl daemon-reload >/dev/null 2>&1 || :
 
 %files
 %defattr(-,root,root,-)
 /usr/bin/alertmanager
 %config(noreplace) /etc/prometheus/alertmanager.yml
 /usr/lib/systemd/system/alertmanager.service
-%config(noreplace) /etc/default/alertmanager
+%config(noreplace) /etc/sysconfig/alertmanager
 %attr(755, prometheus, prometheus)/var/lib/prometheus

@@ -6,7 +6,7 @@ Documentation=https://prometheus.io
 After=network.target
 
 [Service]
-EnvironmentFile=-/etc/default/prometheus
+EnvironmentFile=-/etc/sysconfig/prometheus
 User=prometheus
 ExecStart=/usr/bin/prometheus \
           -config.file=/etc/prometheus/prometheus.yml \

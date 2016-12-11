@@ -9,7 +9,7 @@ URL:     https://prometheus.io
 
 Source0: https://github.com/prometheus/prometheus/releases/download/v%{version}/prometheus-%{version}.linux-amd64.tar.gz
 Source1: prometheus.service
-Source2: prometheus.default
+Source2: prometheus.sysconfig
 
 %description
 
@@ -30,7 +30,7 @@ mkdir -vp %{buildroot}/etc/prometheus
 mkdir -vp %{buildroot}/usr/share/prometheus/console_libraries
 mkdir -vp %{buildroot}/usr/share/prometheus/consoles
 mkdir -vp %{buildroot}/usr/lib/systemd/system
-mkdir -vp %{buildroot}/etc/default
+mkdir -vp %{buildroot}/etc/sysconfig
 install -m 755 prometheus %{buildroot}/usr/bin/prometheus
 install -m 755 promtool %{buildroot}/usr/bin/promtool
 for dir in console_libraries consoles; do
@@ -40,7 +40,7 @@ for dir in console_libraries consoles; do
 done
 install -m 644 prometheus.yml %{buildroot}/etc/prometheus/prometheus.yml
 install -m 644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/prometheus.service
-install -m 644 %{SOURCE2} %{buildroot}/etc/default/prometheus
+install -m 644 %{SOURCE2} %{buildroot}/etc/sysconfig/prometheus
 
 %pre
 getent group prometheus >/dev/null || groupadd -r prometheus
@@ -50,13 +50,20 @@ getent passwd prometheus >/dev/null || \
 exit 0
 
 %post
-%systemd_post prometheus.service
+if [ $1 -eq 1 ] ; then
+        # Initial installation
+        systemctl preset %{name}.service >/dev/null 2>&1 || :
+fi
 
 %preun
-%systemd_preun prometheus.service
+if [ $1 -eq 0 ] ; then
+        # Package removal, not upgrade
+        systemctl --no-reload disable %{name}.service > /dev/null 2>&1 || :
+        systemctl stop %{name}.service > /dev/null 2>&1 || :
+fi
 
 %postun
-%systemd_postun prometheus.service
+systemctl daemon-reload >/dev/null 2>&1 || :
 
 %files
 %defattr(-,root,root,-)
@@ -65,5 +72,5 @@ exit 0
 %config(noreplace) /etc/prometheus/prometheus.yml
 /usr/share/prometheus
 /usr/lib/systemd/system/prometheus.service
-%config(noreplace) /etc/default/prometheus
+%config(noreplace) /etc/sysconfig/prometheus
 %attr(755, prometheus, prometheus)/var/lib/prometheus
