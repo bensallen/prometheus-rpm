@@ -1,4 +1,5 @@
 %define debug_package %{nil}
+%define is_suse %(test -e /etc/SuSE-release && echo 1 || echo 0)
 
 Name:    blackbox_exporter
 Version: 0.2.0
@@ -12,7 +13,11 @@ Source1: blackbox_exporter.service
 Source2: blackbox_exporter.sysconfig
 
 %{?systemd_requires}
+%if %is_suse
+Requires(pre): shadow
+%else
 Requires(pre): shadow-utils
+%endif
 
 %description
 

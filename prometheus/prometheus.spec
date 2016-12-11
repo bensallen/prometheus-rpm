@@ -1,4 +1,5 @@
 %define debug_package %{nil}
+%define is_suse %(test -e /etc/SuSE-release && echo 1 || echo 0)
 
 Name:		 prometheus
 Version: 1.4.1
@@ -10,6 +11,13 @@ URL:     https://prometheus.io
 Source0: https://github.com/prometheus/prometheus/releases/download/v%{version}/prometheus-%{version}.linux-amd64.tar.gz
 Source1: prometheus.service
 Source2: prometheus.sysconfig
+
+%{?systemd_requires}
+%if %is_suse
+Requires(pre): shadow
+%else
+Requires(pre): shadow-utils
+%endif
 
 %description
 

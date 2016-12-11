@@ -1,4 +1,5 @@
 %define debug_package %{nil}
+%define is_suse %(test -e /etc/SuSE-release && echo 1 || echo 0)
 
 Name:		 alertmanager
 Version: 0.5.1
@@ -10,6 +11,13 @@ URL:     https://github.com/prometheus/alertmanager
 Source0: https://github.com/prometheus/alertmanager/releases/download/v%{version}/alertmanager-%{version}.linux-amd64.tar.gz
 Source1: alertmanager.service
 Source2: alertmanager.sysconfig
+
+%{?systemd_requires}
+%if %is_suse
+Requires(pre): shadow
+%else
+Requires(pre): shadow-utils
+%endif
 
 %description
 
